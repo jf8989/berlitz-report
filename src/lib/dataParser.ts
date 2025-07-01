@@ -178,7 +178,6 @@ export function parseBerlitzData(
         "ALUR",
         "BECA",
       ].some((term) => firstCell.includes(term)) &&
-      !["Patricia", "Soledad"].includes(firstCell) &&
       line
         .slice(1)
         .some(

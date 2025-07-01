@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { Card } from "./ui/Card";
 
 interface AIChatInterfaceProps {
-  selectedGroup: string; // New prop for the currently selected group
+  selectedGroup: string;
 }
 
 const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
@@ -23,16 +23,14 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     }
 
     setIsLoading(true);
-    setAnswer("Thinking..."); // Provide immediate feedback
+    setAnswer("Thinking...");
 
     try {
-      // Call your Next.js API route for AI
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        // Pass both question AND selectedGroup to the API
         body: JSON.stringify({ question, groupId: selectedGroup }),
       });
 
@@ -46,12 +44,16 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
       const data = await response.json();
       setAnswer(data.answer || "No answer received.");
     } catch (error: unknown) {
+      // CHANGED: from 'any' to 'unknown'
       console.error("Error fetching AI response:", error);
-      setAnswer(
-        `Sorry, I encountered an error: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }. Please try again.`
-      );
+      // Now we must check the type of error before using it
+      if (error instanceof Error) {
+        setAnswer(
+          `Sorry, I encountered an error: ${error.message}. Please try again.`
+        );
+      } else {
+        setAnswer("An unknown error occurred. Please check the console.");
+      }
     } finally {
       setIsLoading(false);
       setQuestion("");

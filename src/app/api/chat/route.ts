@@ -133,7 +133,7 @@ function getRelevantContext(
     lowerCaseQuestion.includes("attendance summary")
   ) {
     const presentCount = parsedData.attendance.filter(
-      (rec) => rec.status === "Present"
+      (rec) => rec.status === "On-time"
     ).length;
     const absentCount = parsedData.attendance.filter(
       (rec) => rec.status === "Absent"
@@ -148,7 +148,7 @@ function getRelevantContext(
 
     context += `--- Overall Attendance Summary for Group ${parsedData.groupName} ---\n`;
     context += `- Total attendance instances recorded (student-days): ${parsedData.attendance.length}\n`;
-    context += `- Total Present (instances): ${presentCount}\n`;
+    context += `- Total On-time (instances): ${presentCount}\n`;
     context += `- Total Absent (instances): ${absentCount}\n`;
     context += `- Total Late (instances): ${lateCount}\n`;
     context += `- Total Cumulative Lateness: ${totalMinutesLate} minutes\n\n`;

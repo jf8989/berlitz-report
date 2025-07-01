@@ -34,14 +34,16 @@
   --muted-foreground: #6b7280;
   /* Tailwind gray-500 */
 
-  --accent: #e0f2fe;
-  /* Tailwind sky-100 (example) */
-  --accent-foreground: #0c4a6e;
-  /* Tailwind sky-900 (example) */
+  /* CHANGE: Using a darker shade of sky blue for better text contrast on this background */
+  --accent: #bae6fd; /* Was #e0f2fe (sky-100), now sky-200 */
+  --accent-foreground: #0369a1; /* Was #0c4a6e (sky-900), now sky-700 */
 
   --destructive: #ef4444;
   /* Tailwind red-500 */
   --destructive-foreground: #ffffff;
+
+  /* NEW: Adding a distinct warning color for 'Late' status in charts */
+  --warning: #f59e0b; /* Tailwind's amber-500 */
 
   --border: #e5e7eb;
   /* Tailwind gray-200 */
@@ -59,8 +61,7 @@
   --header-height: 4rem;
   --footer-height: 12rem;
   --max-width: 1240px;
-  --gutter: 2rem;
-  /* Default gutter, can be overridden by .container */
+  --gutter: 1rem; /* Adjusted for better mobile padding */
   --radius: 0.5rem;
   /* Base border radius */
 }
@@ -94,15 +95,17 @@
   --muted-foreground: #9ca3af;
   /* Tailwind gray-400 */
 
-  --accent: #075985;
-  /* Tailwind sky-800 (example) */
-  --accent-foreground: #e0f2fe;
-  /* Tailwind sky-100 (example) */
+  /* CHANGE: Using a darker shade of sky blue for better text contrast on this background in dark mode */
+  --accent: #075985; /* Was #075985 (sky-800) - this is already good */
+  --accent-foreground: #e0f2fe; /* Was #e0f2fe (sky-100) - this is already good */
 
   --destructive: #b91c1c;
   /* Tailwind red-700 */
   --destructive-foreground: #fef2f2;
   /* Tailwind red-50 */
+
+  /* NEW: Warning color for 'Late' status in dark mode */
+  --warning: #f59e0b; /* amber-500 works well on dark backgrounds too */
 
   --border: #374151;
   /* Tailwind gray-700 */
@@ -118,11 +121,8 @@
 *::after {
   box-sizing: border-box;
   border-width: 0;
-  /* From Tailwind preflight, good to have */
   border-style: solid;
-  /* From Tailwind preflight */
   border-color: var(--border);
-  /* Default border color */
 }
 
 /* Base body styles */
@@ -130,11 +130,8 @@ body {
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-inter), system-ui, sans-serif;
-  /* Matches Tailwind 'font-sans' */
   line-height: 1.6;
-  /* Slightly more spacious line height */
   letter-spacing: -0.01em;
-  /* Subtle letter spacing for readability */
   min-height: 100vh;
   overflow-x: hidden;
   text-rendering: optimizeLegibility;
@@ -147,8 +144,9 @@ body {
 /* Smooth scrolling for the entire page */
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: var(--header-height);
-  /* Offset for fixed headers */
+  scroll-padding-top: calc(
+    var(--header-height) + 1rem
+  ); /* Offset for fixed headers */
 }
 
 /* Improved image handling */
@@ -160,7 +158,6 @@ svg {
   display: block;
   max-width: 100%;
   height: auto;
-  /* Maintain aspect ratio by default */
 }
 
 /* Reset form element typography and some base styles */
@@ -171,7 +168,6 @@ select {
   font: inherit;
   color: inherit;
   margin: 0;
-  /* Reset margin */
 }
 
 button,
@@ -179,27 +175,24 @@ button,
   cursor: pointer;
 }
 
-/* Preserve whitespace for pre elements */
 pre,
 code,
 kbd,
 samp {
   font-family: var(--font-geist-mono), Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
-  /* Matches Tailwind 'font-mono' */
 }
 
 pre {
   white-space: pre-wrap;
   overflow-x: auto;
-  /* Allow scrolling for long code lines */
   padding: 1em;
   background-color: var(--muted);
   border-radius: var(--radius);
   margin-bottom: 1.5em;
 }
 
-/* Fix for mobile font blurriness (from your original) */
+/* Fix for mobile font blurriness */
 @media (max-width: 768px) {
   * {
     -webkit-font-smoothing: subpixel-antialiased;

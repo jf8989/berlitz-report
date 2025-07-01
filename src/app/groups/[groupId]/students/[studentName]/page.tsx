@@ -114,7 +114,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
   // Calculate student-specific attendance stats
   const totalClassesTrackedForStudent = studentRecords.length;
   const presentCount = studentRecords.filter(
-    (rec) => rec.status === "Present"
+    (rec) => rec.status === "On-time"
   ).length;
   const absentCount = studentRecords.filter(
     (rec) => rec.status === "Absent"
@@ -148,7 +148,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
       : "Does Not Meet Requirement";
 
   const studentAttendanceData = [
-    { name: "Present", value: presentCount, fill: COLORS[0] },
+    { name: "On-time", value: presentCount, fill: COLORS[0] },
     { name: "Late", value: lateCount, fill: COLORS[1] },
     { name: "Absent", value: absentCount, fill: COLORS[2] },
   ];
@@ -182,7 +182,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
             {totalClassesTrackedForStudent}
           </p>
           <p className="text-muted-foreground">
-            <strong>Present:</strong> {presentCount} classes
+            <strong>On-time:</strong> {presentCount} classes
           </p>
           <p className="text-muted-foreground">
             <strong>Late:</strong> {lateCount} classes ({totalMinutesLate} total
@@ -282,7 +282,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                       ${
-                        record.status === "Present"
+                        record.status === "On-time"
                           ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
                           : record.status === "Late"
                           ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"

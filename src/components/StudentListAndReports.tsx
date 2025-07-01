@@ -25,7 +25,7 @@ const StudentListAndReports: React.FC<StudentListAndReportsProps> = ({
           (rec) => rec.student === student
         );
         const presentCount = studentRecords.filter(
-          (rec) => rec.status === "Present"
+          (rec) => rec.status === "On-time"
         ).length;
         const totalClasses = studentRecords.length;
         const attendancePercentage =

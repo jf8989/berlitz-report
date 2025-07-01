@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/groups/[groupId]/students/[studentName]/page.tsx
-// This is a Server Component that will dynamically generate reports.
+"use client"; // This component uses recharts which requires client-side rendering
 
 import React from "react";
 import {
@@ -8,7 +8,7 @@ import {
   ParsedBerlitzData,
   AttendanceRecord,
 } from "@/lib/dataParser";
-import { rawBerlitzGroups } from "@/data/berlitzData"; // Import all raw group data
+import { rawBerlitzGroups } from "@/data/berlitzData";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 import {
@@ -22,17 +22,12 @@ import {
 
 interface StudentReportPageProps {
   params: {
-    groupId: string; // Matches [groupId] in the path
-    studentName: string; // Matches [studentName] in the path
+    groupId: string;
+    studentName: string;
   };
 }
 
-// Color scheme for charts
-const COLORS = ["var(--primary)", "var(--accent)", "var(--destructive)"];
-
 // Function to generate static paths for all students across all groups
-// This is for Static Site Generation (SSG) in Next.js.
-// It tells Next.js which paths to pre-render at build time.
 export async function generateStaticParams() {
   const allParsedData: ParsedBerlitzData[] =
     parseAllGroupsData(rawBerlitzGroups);
@@ -41,24 +36,28 @@ export async function generateStaticParams() {
   allParsedData.forEach((group) => {
     group.metadata.studentNames.forEach((studentName) => {
       params.push({
-        groupId: encodeURIComponent(group.groupName), // URL-encode the group name
-        studentName: encodeURIComponent(studentName), // URL-encode the student name
+        groupId: encodeURIComponent(group.groupName),
+        studentName: encodeURIComponent(studentName),
       });
     });
   });
   return params;
 }
 
-export default function StudentReportPage({ params }: StudentReportPageProps) {
+const StudentReportPage = ({ params }: StudentReportPageProps) => {
   const { groupId, studentName } = params;
-  const decodedGroupId = decodeURIComponent(groupId); // Decode URL-encoded parts
+  const decodedGroupId = decodeURIComponent(groupId);
   const decodedStudentName = decodeURIComponent(studentName);
 
-  // Parse all data to find the specific group and student
-  const allParsedData: ParsedBerlitzData[] =
-    parseAllGroupsData(rawBerlitzGroups);
-  const currentGroupData = allParsedData.find(
-    (group) => group.groupName === decodedGroupId
+  // Note: For a client component, data fetching would ideally use a hook like `useSWR` or `react-query`.
+  // Since our data is static, we can parse it directly here.
+  const allParsedData: ParsedBerlitzData[] = React.useMemo(
+    () => parseAllGroupsData(rawBerlitzGroups),
+    []
+  );
+  const currentGroupData = React.useMemo(
+    () => allParsedData.find((group) => group.groupName === decodedGroupId),
+    [allParsedData, decodedGroupId]
   );
 
   if (!currentGroupData) {
@@ -93,7 +92,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
         </h1>
         <Card className="p-6">
           <p className="text-lg text-muted-foreground">
-            No attendance data found for student:{" "}
+            No attendance data for student:{" "}
             <span className="font-semibold text-foreground">
               {decodedStudentName}
             </span>{" "}
@@ -111,9 +110,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
     );
   }
 
-  // Calculate student-specific attendance stats
-  const totalClassesTrackedForStudent = studentRecords.length;
-  const presentCount = studentRecords.filter(
+  const onTimeCount = studentRecords.filter(
     (rec) => rec.status === "On-time"
   ).length;
   const absentCount = studentRecords.filter(
@@ -126,32 +123,38 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
     (sum, rec) => sum + rec.minutesLate,
     0
   );
+  const totalSessionsTrackedForStudent = studentRecords.length;
 
   const attendanceRate =
-    totalClassesTrackedForStudent > 0
+    totalSessionsTrackedForStudent > 0
       ? (
-          ((presentCount + lateCount) / totalClassesTrackedForStudent) *
+          ((onTimeCount + lateCount) / totalSessionsTrackedForStudent) *
           100
-        ).toFixed(2)
+        ).toFixed(1)
       : "N/A";
 
-  // Parse attendance minimum from string, e.g., "60% attendance min to pass" -> 60
   const attendanceMinMatch =
     currentGroupData.metadata.attendanceMin.match(/(\d+)%/);
   const requiredMinAttendance = attendanceMinMatch
     ? parseInt(attendanceMinMatch[1], 10)
     : 0;
-
   const complianceStatus =
     parseFloat(attendanceRate) >= requiredMinAttendance
       ? "Meets Requirement"
       : "Does Not Meet Requirement";
 
   const studentAttendanceData = [
-    { name: "On-time", value: presentCount, fill: COLORS[0] },
-    { name: "Late", value: lateCount, fill: COLORS[1] },
-    { name: "Absent", value: absentCount, fill: COLORS[2] },
+    { name: "On-time", value: onTimeCount, fill: "var(--primary)" },
+    { name: "Late", value: lateCount, fill: "var(--warning)" },
+    { name: "Absent", value: absentCount, fill: "var(--destructive)" },
   ];
+
+  const tooltipStyle = {
+    backgroundColor: "var(--background)",
+    color: "var(--foreground)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius)",
+  };
 
   return (
     <main className="container mx-auto py-8 px-4">
@@ -167,43 +170,51 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
           <h2 className="text-xl font-semibold mb-2 text-foreground">
             Summary
           </h2>
-          <p className="text-muted-foreground">
-            <strong>Course:</strong> {currentGroupData.metadata.name}{" "}
-            {currentGroupData.metadata.level}
-          </p>
-          {currentGroupData.metadata.additionalInfo.length > 0 && (
-            <p className="text-muted-foreground">
-              <strong>Additional Info:</strong>{" "}
-              {currentGroupData.metadata.additionalInfo.join(", ")}
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>
+              <strong className="text-foreground">Course:</strong>{" "}
+              {currentGroupData.metadata.name} {currentGroupData.metadata.level}
             </p>
-          )}
-          <p className="text-muted-foreground">
-            <strong>Total Classes Tracked:</strong>{" "}
-            {totalClassesTrackedForStudent}
-          </p>
-          <p className="text-muted-foreground">
-            <strong>On-time:</strong> {presentCount} classes
-          </p>
-          <p className="text-muted-foreground">
-            <strong>Late:</strong> {lateCount} classes ({totalMinutesLate} total
-            minutes late)
-          </p>
-          <p className="text-muted-foreground">
-            <strong>Absent:</strong> {absentCount} classes
-          </p>
-          <p className="text-muted-foreground text-lg mt-4">
-            <strong>Overall Attendance Rate (P+L):</strong>{" "}
+            {currentGroupData.metadata.additionalInfo.length > 0 && (
+              <p>
+                <strong className="text-foreground">Additional Info:</strong>{" "}
+                {currentGroupData.metadata.additionalInfo.join(", ")}
+              </p>
+            )}
+            {/* CHANGED: "Classes" to "Sessions" */}
+            <p>
+              <strong className="text-foreground">
+                Total Sessions Tracked:
+              </strong>{" "}
+              {totalSessionsTrackedForStudent}
+            </p>
+            <p>
+              <strong className="text-foreground">On-time:</strong>{" "}
+              {onTimeCount} sessions
+            </p>
+            <p>
+              <strong className="text-foreground">Late:</strong> {lateCount}{" "}
+              sessions ({totalMinutesLate} total minutes late)
+            </p>
+            <p>
+              <strong className="text-foreground">Absent:</strong> {absentCount}{" "}
+              sessions
+            </p>
+          </div>
+          <p className="text-lg mt-4">
+            <strong className="text-foreground">
+              Overall Attendance Rate:
+            </strong>{" "}
             <span className="font-bold text-foreground">{attendanceRate}%</span>
           </p>
           <p
             className={`font-bold text-lg mt-2 ${
               complianceStatus === "Meets Requirement"
-                ? "text-green-600"
-                : "text-red-600"
+                ? "text-success-600"
+                : "text-destructive"
             }`}
           >
-            Compliance: {complianceStatus} (Minimum:{" "}
-            {currentGroupData.metadata.attendanceMin})
+            Compliance: {complianceStatus} (Min: {requiredMinAttendance}%)
           </p>
         </Card>
 
@@ -211,15 +222,14 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
           <h2 className="text-xl font-semibold mb-2 text-foreground">
             Attendance Breakdown
           </h2>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={studentAttendanceData}
                 cx="50%"
                 cy="50%"
-                outerRadius={80}
+                outerRadius="80%"
                 dataKey="value"
-                labelLine={false}
                 label={({ name, percent }) =>
                   `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                 }
@@ -228,7 +238,7 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip contentStyle={tooltipStyle} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -240,42 +250,42 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
           Detailed Attendance Log
         </h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                 >
                   Day
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                 >
                   Date
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                 >
                   Status
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
                 >
                   Minutes Late
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+            <tbody className="bg-card divide-y divide-border">
               {studentRecords.map((record, index) => (
                 <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                     {record.day}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                     {record.date}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -283,16 +293,16 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                       ${
                         record.status === "On-time"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                          ? "bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-100"
                           : record.status === "Late"
-                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+                          ? "bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-100"
+                          : "bg-destructive/20 text-destructive dark:bg-destructive/30"
                       }`}
                     >
                       {record.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                     {record.minutesLate > 0 ? record.minutesLate : "-"}
                   </td>
                 </tr>
@@ -307,4 +317,6 @@ export default function StudentReportPage({ params }: StudentReportPageProps) {
       </Link>
     </main>
   );
-}
+};
+
+export default StudentReportPage;

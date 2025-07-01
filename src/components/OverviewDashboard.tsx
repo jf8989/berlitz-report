@@ -30,27 +30,24 @@ const renderCustomizedLabel = ({
   outerRadius = 0,
   percent = 0,
   name = "",
-}: Partial<{
-  cx: number;
-  cy: number;
-  midAngle: number;
-  innerRadius: number;
-  outerRadius: number;
-  percent: number;
-  name: string;
-}>) => {
+}: {
+  cx?: number;
+  cy?: number;
+  midAngle?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  percent?: number;
+  name?: string;
+}) => {
   const RADIAN = Math.PI / 180;
-  // Position the label outside the pie chart
-  const radius = innerRadius + (outerRadius - innerRadius) * 1.1;
+  const radius = innerRadius + (outerRadius - innerRadius) * 1.15;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
   const percentage = (percent * 100).toFixed(0);
 
-  // Determine text anchor based on label position
   const textAnchor = x > cx ? "start" : "end";
 
-  // Determine text color based on the status name for better contrast
-  let textColor = "var(--foreground)"; // Default text color
+  let textColor = "var(--foreground)";
   if (name === "Late") {
     textColor = "var(--warning)";
   } else if (name === "Absent") {
@@ -66,7 +63,7 @@ const renderCustomizedLabel = ({
       fill={textColor}
       textAnchor={textAnchor}
       dominantBaseline="central"
-      className="text-xs font-semibold" // Use Tailwind classes for styling
+      className="text-xs font-semibold"
     >
       {`${name} ${percentage}%`}
     </text>
@@ -91,9 +88,31 @@ const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
     0
   );
 
+  // --- REVISED LOGIC: Lateness Statistics Calculations ---
+  // Count only the specific instances of lateness.
+  const totalLateIncidents = attendance.filter(
+    (rec) => rec.status === "Late" && rec.minutesLate > 0
+  ).length;
+
+  // Calculate the average by dividing total minutes by the number of incidents.
+  const averageDurationPerLateArrival =
+    totalLateIncidents > 0
+      ? (totalMinutesLate / totalLateIncidents).toFixed(1)
+      : "0.0";
+  // --- END OF REVISED LOGIC ---
+
+  const latenessValues = attendance
+    .filter((rec) => rec.status === "Late" && rec.minutesLate > 0)
+    .map((rec) => rec.minutesLate);
+
+  const minLateness =
+    latenessValues.length > 0 ? Math.min(...latenessValues) : 0;
+  const maxLateness =
+    latenessValues.length > 0 ? Math.max(...latenessValues) : 0;
+
   const overallAttendanceData = [
     { name: "On-time", value: onTimeCount, fill: "var(--primary)" },
-    { name: "Late", value: lateCount, fill: "var(--warning)" }, // CHANGED: Use warning color for better contrast
+    { name: "Late", value: lateCount, fill: "var(--warning)" },
     { name: "Absent", value: absentCount, fill: "var(--destructive)" },
   ];
 
@@ -110,25 +129,38 @@ const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
     };
   });
 
+  const tooltipStyle = {
+    backgroundColor: "var(--background)",
+    color: "var(--foreground)",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius)",
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <Card>
+      <Card className="flex flex-col">
         <h3 className="text-xl font-semibold mb-2">Course Information</h3>
-        <p>
-          <strong>Name:</strong> {metadata.name} {metadata.level}
-        </p>
-        <p>
-          <strong>Min Attendance:</strong> {metadata.attendanceMin}
-        </p>
-        <p>
-          <strong>Duration:</strong> {metadata.duration}
-        </p>
-        <p>
-          <strong>Frequency:</strong> {metadata.frequency}
-        </p>
-        {metadata.materialsLink !== "N/A" && (
+        <div className="space-y-1 text-sm text-muted-foreground">
           <p>
-            <strong>Materials:</strong>{" "}
+            <strong className="text-foreground">Name:</strong> {metadata.name}{" "}
+            {metadata.level}
+          </p>
+          <p>
+            <strong className="text-foreground">Min Attendance:</strong>{" "}
+            {metadata.attendanceMin}
+          </p>
+          <p>
+            <strong className="text-foreground">Duration:</strong>{" "}
+            {metadata.duration}
+          </p>
+          <p>
+            <strong className="text-foreground">Frequency:</strong>{" "}
+            {metadata.frequency}
+          </p>
+        </div>
+        {metadata.materialsLink !== "N/A" && (
+          <p className="mt-2 text-sm">
+            <strong className="text-foreground">Materials:</strong>{" "}
             <a
               href={metadata.materialsLink}
               target="_blank"
@@ -144,43 +176,44 @@ const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
       <Card>
         <h3 className="text-xl font-semibold mb-2">Overall Class Attendance</h3>
         <ResponsiveContainer width="100%" height={250}>
-          <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+          <PieChart margin={{ top: 30, right: 40, bottom: 30, left: 40 }}>
             <Pie
               data={overallAttendanceData}
               cx="50%"
               cy="50%"
-              outerRadius="80%" // Make radius responsive
+              outerRadius="80%"
               dataKey="value"
-              labelLine={true} // Re-enable label lines to prevent overlap
-              label={renderCustomizedLabel} // Use our custom label renderer
+              labelLine={true}
+              label={renderCustomizedLabel}
             >
               {overallAttendanceData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--card)",
-                borderColor: "var(--border)",
-              }}
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Legend iconSize={12} />
           </PieChart>
         </ResponsiveContainer>
-        <div className="text-center mt-2 space-y-1">
-          <p className="text-sm text-muted-foreground">
-            Total Classes Monitored: {totalClassesTracked} days
+        <div className="text-center mt-2 space-y-1 text-sm text-muted-foreground">
+          <p>Total Sessions Monitored: {totalClassesTracked} sessions</p>
+          <p>Total Lateness Minutes: {totalMinutesLate}</p>
+          {/* UPDATED: New label and value for lateness average */}
+          <p>
+            Avg. Duration per Late Arrival: {averageDurationPerLateArrival} min
           </p>
-          {/* REMOVED: "Total Observed Instances" line is gone */}
-          <p className="text-sm text-muted-foreground">
-            Total Lateness Minutes: {totalMinutesLate}
-          </p>
+          {latenessValues.length > 0 ? (
+            <p>
+              Lateness Range: {minLateness}-{maxLateness} min
+            </p>
+          ) : (
+            <p>Lateness Range: N/A</p>
+          )}
         </div>
       </Card>
 
       <Card className="md:col-span-2 lg:col-span-1">
         <h3 className="text-xl font-semibold mb-2">Unit Progress Overview</h3>
-        <ul className="list-disc list-inside text-sm max-h-48 overflow-y-auto">
+        <ul className="list-disc list-inside text-sm max-h-56 overflow-y-auto">
           {progress.length > 0 ? (
             progress.map((item, index) => (
               <li key={index} className="mb-1">
@@ -207,16 +240,10 @@ const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           >
             <XAxis dataKey="student" tick={{ fontSize: 12 }} />
             <YAxis />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--card)",
-                borderColor: "var(--border)",
-              }}
-            />
+            <Tooltip contentStyle={tooltipStyle} />
             <Legend />
             <Bar dataKey="On-time" stackId="a" fill="var(--primary)" />
-            <Bar dataKey="Late" stackId="a" fill="var(--warning)" />{" "}
-            {/* CHANGED: Use warning color */}
+            <Bar dataKey="Late" stackId="a" fill="var(--warning)" />
             <Bar dataKey="Absent" stackId="a" fill="var(--destructive)" />
           </BarChart>
         </ResponsiveContainer>

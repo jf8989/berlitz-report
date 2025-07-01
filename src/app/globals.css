@@ -1,0 +1,270 @@
+/* globals.css */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Base variables */
+:root {
+  /* Core system colors */
+  --background: #ffffff;
+  /* Light mode background */
+  --foreground: #111827;
+  /* Light mode text (Tailwind gray-900) */
+
+  /* Expanded system colors (Light Mode) */
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  --primary: #4a90e2;
+  /* Your original primary */
+  --primary-hover: #3a7bc8;
+  /* Your original primary hover */
+  --primary-foreground: #ffffff;
+  /* Text on primary bg */
+
+  --secondary: #f3f4f6;
+  /* Tailwind gray-100 */
+  --secondary-foreground: #1f2937;
+  /* Tailwind gray-800 */
+
+  --muted: #f3f4f6;
+  /* Tailwind gray-100 */
+  --muted-foreground: #6b7280;
+  /* Tailwind gray-500 */
+
+  --accent: #e0f2fe;
+  /* Tailwind sky-100 (example) */
+  --accent-foreground: #0c4a6e;
+  /* Tailwind sky-900 (example) */
+
+  --destructive: #ef4444;
+  /* Tailwind red-500 */
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e7eb;
+  /* Tailwind gray-200 */
+  --input: #d1d5db;
+  /* Tailwind gray-300 (for input borders) */
+  --ring: #4a90e2;
+  /* Focus ring, same as primary */
+
+  /* Animation speeds */
+  --transition-fast: 150ms;
+  --transition-medium: 300ms;
+  --transition-slow: 500ms;
+
+  /* Layout constants */
+  --header-height: 4rem;
+  --footer-height: 12rem;
+  --max-width: 1240px;
+  --gutter: 2rem;
+  /* Default gutter, can be overridden by .container */
+  --radius: 0.5rem;
+  /* Base border radius */
+}
+
+/* Dark mode overrides (using .dark class) */
+.dark {
+  --background: #0a0a0a;
+  /* Dark mode background (very dark gray) */
+  --foreground: #f3f4f6;
+  /* Dark mode text (Tailwind gray-100) */
+
+  --card: #171717;
+  /* Slightly lighter than bg */
+  --card-foreground: #f3f4f6;
+  --popover: #171717;
+  --popover-foreground: #f3f4f6;
+
+  --primary: #3a7bc8;
+  /* Adjusted primary for dark */
+  --primary-hover: #4a90e2;
+  /* Lighter hover for dark primary */
+  --primary-foreground: #ffffff;
+
+  --secondary: #1f2937;
+  /* Tailwind gray-800 */
+  --secondary-foreground: #f3f4f6;
+  /* Tailwind gray-100 */
+
+  --muted: #374151;
+  /* Tailwind gray-700 */
+  --muted-foreground: #9ca3af;
+  /* Tailwind gray-400 */
+
+  --accent: #075985;
+  /* Tailwind sky-800 (example) */
+  --accent-foreground: #e0f2fe;
+  /* Tailwind sky-100 (example) */
+
+  --destructive: #b91c1c;
+  /* Tailwind red-700 */
+  --destructive-foreground: #fef2f2;
+  /* Tailwind red-50 */
+
+  --border: #374151;
+  /* Tailwind gray-700 */
+  --input: #4b5563;
+  /* Tailwind gray-600 (for input borders in dark) */
+  --ring: #3a7bc8;
+  /* Adjusted ring for dark */
+}
+
+/* Reset box sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-width: 0;
+  /* From Tailwind preflight, good to have */
+  border-style: solid;
+  /* From Tailwind preflight */
+  border-color: var(--border);
+  /* Default border color */
+}
+
+/* Base body styles */
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  /* Matches Tailwind 'font-sans' */
+  line-height: 1.6;
+  /* Slightly more spacious line height */
+  letter-spacing: -0.01em;
+  /* Subtle letter spacing for readability */
+  min-height: 100vh;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--transition-medium) ease-in-out,
+    color var(--transition-medium) ease-in-out;
+}
+
+/* Smooth scrolling for the entire page */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--header-height);
+  /* Offset for fixed headers */
+}
+
+/* Improved image handling */
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  /* Maintain aspect ratio by default */
+}
+
+/* Reset form element typography and some base styles */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+  /* Reset margin */
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/* Preserve whitespace for pre elements */
+pre,
+code,
+kbd,
+samp {
+  font-family: var(--font-geist-mono), Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  /* Matches Tailwind 'font-mono' */
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  /* Allow scrolling for long code lines */
+  padding: 1em;
+  background-color: var(--muted);
+  border-radius: var(--radius);
+  margin-bottom: 1.5em;
+}
+
+/* Fix for mobile font blurriness (from your original) */
+@media (max-width: 768px) {
+  * {
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+}
+
+/* Helper classes */
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Utility classes using @layer components (examples) */
+@layer components {
+  .card {
+    @apply bg-card text-card-foreground rounded-lg border shadow-sm p-4 md:p-6;
+  }
+
+  .button {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors px-4 py-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .button-primary {
+    @apply button bg-primary text-primary-foreground hover:bg-primary-hover;
+  }
+
+  .button-secondary {
+    @apply button bg-secondary text-secondary-foreground hover:bg-muted;
+  }
+
+  .button-destructive {
+    @apply button bg-destructive text-destructive-foreground hover:opacity-90;
+  }
+
+  .button-outline {
+    @apply button border border-input bg-transparent hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .button-ghost {
+    @apply button hover:bg-accent hover:text-accent-foreground;
+  }
+
+  .button-link {
+    @apply button text-primary underline-offset-4 hover:underline p-0 h-auto;
+  }
+
+  .button-icon {
+    @apply button h-10 w-10 p-0;
+  }
+}

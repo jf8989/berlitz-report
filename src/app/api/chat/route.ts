@@ -4,11 +4,35 @@ import {
   HarmBlockThreshold,
   HarmCategory,
   Tool,
-  SchemaType, // FIX 1: Import the SchemaType enum
+  SchemaType,
 } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { parseAllGroupsData, ParsedBerlitzData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
+
+// --- CACHING IMPLEMENTATION ---
+// This simple in-memory cache will hold the parsed data.
+// In a serverless environment, this cache will persist for the "warm" lifetime of the function instance.
+let cachedParsedData: ParsedBerlitzData[] | null = null;
+
+/**
+ * Gets the parsed Berlitz data, using a cache to avoid re-parsing on every request.
+ * @returns {ParsedBerlitzData[]} The array of all parsed group data.
+ */
+function getParsedData(): ParsedBerlitzData[] {
+  if (cachedParsedData) {
+    // If cache exists, return it immediately.
+    console.log("Returning cached data.");
+    return cachedParsedData;
+  } else {
+    // If no cache, parse the raw data, store it in the cache, and then return it.
+    console.log("Parsing data for the first time and caching...");
+    const parsedData = parseAllGroupsData(rawBerlitzGroups);
+    cachedParsedData = parsedData;
+    return parsedData;
+  }
+}
+// --- END OF CACHING IMPLEMENTATION ---
 
 const API_KEY = process.env.GOOGLE_API_KEY;
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT;
@@ -21,7 +45,6 @@ if (!API_KEY || !SYSTEM_PROMPT) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Define the tool for handling off-topic users
 const tools: Tool[] = [
   {
     functionDeclarations: [
@@ -30,7 +53,6 @@ const tools: Tool[] = [
         description:
           "Ends the conversation when a user persistently goes off-topic after a warning.",
         parameters: {
-          // FIX 2: Use the SchemaType enum instead of strings
           type: SchemaType.OBJECT,
           properties: {
             finalMessage: {
@@ -71,25 +93,75 @@ const safetySettings = [
   },
 ];
 
-function getRelevantContext(
-  question: string,
-  parsedData: ParsedBerlitzData
-): string {
-  let context = `Course Name: ${parsedData.metadata.name} ${parsedData.metadata.level} (Group: ${parsedData.groupName})\n`;
-  context += `Minimum Attendance to Pass: ${parsedData.metadata.attendanceMin}\n`;
-  const lowerCaseQuestion = question.toLowerCase();
+/**
+ * Creates a comprehensive, structured report of a group's data to be used as context for the AI.
+ * @param {ParsedBerlitzData} parsedData - The parsed data for a single group.
+ * @returns {string} A formatted string containing the full context.
+ */
+function createFullGroupContext(parsedData: ParsedBerlitzData): string {
+  let context = `
+<group_metadata>
+  Group Name: ${parsedData.metadata.groupName}
+  Course Name: ${parsedData.metadata.name}
+  Course Level: ${parsedData.metadata.level}
+  Minimum Attendance to Pass: ${parsedData.metadata.attendanceMin}
+  Session Duration: ${parsedData.metadata.duration}
+  Session Frequency: ${parsedData.metadata.frequency}
+  Additional Info: ${parsedData.metadata.additionalInfo.join(", ") || "N/A"}
+</group_metadata>
 
-  if (lowerCaseQuestion.includes("student")) {
-    context += `Student Names: ${parsedData.metadata.studentNames.join(
-      ", "
-    )}\n`;
+<overall_attendance_summary>
+  Total Sessions Tracked: ${parsedData.metadata.allDays.length}
+  Total On-time Records: ${
+    parsedData.attendance.filter((r) => r.status === "On-time").length
   }
-  if (lowerCaseQuestion.includes("progress")) {
-    context += `--- Recent Progress Notes ---\n`;
-    parsedData.progress.slice(-5).forEach((p) => {
-      context += `- ${p.day}: ${p.note}\n`;
-    });
+  Total Late Records: ${
+    parsedData.attendance.filter((r) => r.status === "Late").length
   }
+  Total Absent Records: ${
+    parsedData.attendance.filter((r) => r.status === "Absent").length
+  }
+</overall_attendance_summary>
+
+<student_specific_attendance>
+`;
+
+  parsedData.metadata.studentNames.forEach((student) => {
+    const studentRecords = parsedData.attendance.filter(
+      (rec) => rec.student === student
+    );
+    const onTime = studentRecords.filter((r) => r.status === "On-time").length;
+    const late = studentRecords.filter((r) => r.status === "Late").length;
+    const absent = studentRecords.filter((r) => r.status === "Absent").length;
+    const totalMinutesLate = studentRecords.reduce(
+      (sum, rec) => sum + rec.minutesLate,
+      0
+    );
+
+    context += `  <student name="${student}">
+    On-time: ${onTime} sessions
+    Late: ${late} sessions
+    Absent: ${absent} sessions
+    Total Minutes Late: ${totalMinutesLate}
+  </student>
+`;
+  });
+
+  context += `</student_specific_attendance>
+
+<full_progress_log_avance>
+`;
+
+  parsedData.progress.forEach((note) => {
+    context += `  <progress_update day="${note.day}" date="${note.date}">
+    ${note.note}
+  </progress_update>
+`;
+  });
+
+  context += `</full_progress_log_avance>
+`;
+
   return context;
 }
 
@@ -104,7 +176,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const allParsedData = parseAllGroupsData(rawBerlitzGroups);
+    // --- USE CACHED DATA ---
+    const allParsedData = getParsedData();
     const currentGroupData = allParsedData.find(
       (group) => group.groupName === groupId
     );
@@ -116,7 +189,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const context = getRelevantContext(question, currentGroupData);
+    const fullContext = createFullGroupContext(currentGroupData);
 
     const finalPrompt = `
 ${
@@ -125,9 +198,11 @@ ${
     : ""
 }
 
-<data_context for="${currentGroupData.groupName}">
-${context}
-</data_context>
+<full_group_report_data for="${currentGroupData.groupName}">
+${fullContext}
+</full_group_report_data>
+
+Based *only* on the data above, answer the following user question.
 
 User Question: "${question}"
 `;

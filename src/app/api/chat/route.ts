@@ -10,29 +10,16 @@ import { NextResponse } from "next/server";
 import { parseAllGroupsData, ParsedBerlitzData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
 
-// --- CACHING IMPLEMENTATION ---
-// This simple in-memory cache will hold the parsed data.
-// In a serverless environment, this cache will persist for the "warm" lifetime of the function instance.
 let cachedParsedData: ParsedBerlitzData[] | null = null;
 
-/**
- * Gets the parsed Berlitz data, using a cache to avoid re-parsing on every request.
- * @returns {ParsedBerlitzData[]} The array of all parsed group data.
- */
 function getParsedData(): ParsedBerlitzData[] {
   if (cachedParsedData) {
-    // If cache exists, return it immediately.
-    console.log("Returning cached data.");
     return cachedParsedData;
-  } else {
-    // If no cache, parse the raw data, store it in the cache, and then return it.
-    console.log("Parsing data for the first time and caching...");
-    const parsedData = parseAllGroupsData(rawBerlitzGroups);
-    cachedParsedData = parsedData;
-    return parsedData;
   }
+  console.log("Parsing data for the first time and caching...");
+  cachedParsedData = parseAllGroupsData(rawBerlitzGroups);
+  return cachedParsedData;
 }
-// --- END OF CACHING IMPLEMENTATION ---
 
 const API_KEY = process.env.GOOGLE_API_KEY;
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT;
@@ -93,41 +80,30 @@ const safetySettings = [
   },
 ];
 
-/**
- * Creates a comprehensive, structured report of a group's data to be used as context for the AI.
- * @param {ParsedBerlitzData} parsedData - The parsed data for a single group.
- * @returns {string} A formatted string containing the full context.
- */
-function createFullGroupContext(parsedData: ParsedBerlitzData): string {
+// --- FIX: This function now accepts ALL data to build a global student directory ---
+function createComprehensiveContext(
+  currentGroupData: ParsedBerlitzData,
+  allData: ParsedBerlitzData[]
+): string {
+  // --- PART 1: Full, detailed report for the CURRENTLY SELECTED group ---
   let context = `
-<group_metadata>
-  Group Name: ${parsedData.metadata.groupName}
-  Course Name: ${parsedData.metadata.name}
-  Course Level: ${parsedData.metadata.level}
-  Minimum Attendance to Pass: ${parsedData.metadata.attendanceMin}
-  Session Duration: ${parsedData.metadata.duration}
-  Session Frequency: ${parsedData.metadata.frequency}
-  Additional Info: ${parsedData.metadata.additionalInfo.join(", ") || "N/A"}
-</group_metadata>
-
-<overall_attendance_summary>
-  Total Sessions Tracked: ${parsedData.metadata.allDays.length}
-  Total On-time Records: ${
-    parsedData.attendance.filter((r) => r.status === "On-time").length
-  }
-  Total Late Records: ${
-    parsedData.attendance.filter((r) => r.status === "Late").length
-  }
-  Total Absent Records: ${
-    parsedData.attendance.filter((r) => r.status === "Absent").length
-  }
-</overall_attendance_summary>
-
-<student_specific_attendance>
+<full_group_report_data for="${currentGroupData.metadata.groupName}">
+  <group_metadata>
+    Group Name: ${currentGroupData.metadata.groupName}
+    Course Name: ${currentGroupData.metadata.name}
+    Course Level: ${currentGroupData.metadata.level}
+    Minimum Attendance to Pass: ${currentGroupData.metadata.attendanceMin}
+    Session Duration: ${currentGroupData.metadata.duration}
+    Session Frequency: ${currentGroupData.metadata.frequency}
+    Additional Info: ${
+      currentGroupData.metadata.additionalInfo.join(", ") || "N/A"
+    }
+  </group_metadata>
+  <student_specific_attendance>
 `;
 
-  parsedData.metadata.studentNames.forEach((student) => {
-    const studentRecords = parsedData.attendance.filter(
+  currentGroupData.metadata.studentNames.forEach((student) => {
+    const studentRecords = currentGroupData.attendance.filter(
       (rec) => rec.student === student
     );
     const onTime = studentRecords.filter((r) => r.status === "On-time").length;
@@ -137,29 +113,45 @@ function createFullGroupContext(parsedData: ParsedBerlitzData): string {
       (sum, rec) => sum + rec.minutesLate,
       0
     );
-
-    context += `  <student name="${student}">
-    On-time: ${onTime} sessions
-    Late: ${late} sessions
-    Absent: ${absent} sessions
-    Total Minutes Late: ${totalMinutesLate}
-  </student>
+    context += `    <student name="${student}">
+      On-time: ${onTime}, Late: ${late}, Absent: ${absent}, Total Minutes Late: ${totalMinutesLate}
+    </student>
 `;
   });
 
-  context += `</student_specific_attendance>
-
-<full_progress_log_avance>
+  context += `  </student_specific_attendance>
+  <full_progress_log_avance>
+`;
+  currentGroupData.progress.forEach((note) => {
+    context += `    <progress_update day="${note.day}" date="${note.date}">${note.note}</progress_update>\n`;
+  });
+  context += `  </full_progress_log_avance>
+</full_group_report_data>
 `;
 
-  parsedData.progress.forEach((note) => {
-    context += `  <progress_update day="${note.day}" date="${note.date}">
-    ${note.note}
-  </progress_update>
+  // --- PART 2: A directory of ALL students across ALL groups ---
+  // This gives the AI global awareness to answer questions like "Which group is Gustavo in?"
+  context += `
+<global_student_directory>
+  This is a list of all students and the group(s) they belong to. Use this to find a student if they are not in the currently selected group's report.
 `;
+  const studentMap = new Map<string, string[]>();
+  allData.forEach((group) => {
+    group.metadata.studentNames.forEach((student) => {
+      if (!studentMap.has(student)) {
+        studentMap.set(student, []);
+      }
+      studentMap.get(student)?.push(group.metadata.groupName);
+    });
   });
 
-  context += `</full_progress_log_avance>
+  studentMap.forEach((groups, student) => {
+    context += `  <student name="${student}" groups="${groups.join(
+      ", "
+    )}" />\n`;
+  });
+
+  context += `</global_student_directory>
 `;
 
   return context;
@@ -171,12 +163,11 @@ export async function POST(req: Request) {
 
     if (!groupId) {
       return NextResponse.json(
-        { error: "Group ID is required for AI queries." },
+        { error: "Group ID is required" },
         { status: 400 }
       );
     }
 
-    // --- USE CACHED DATA ---
     const allParsedData = getParsedData();
     const currentGroupData = allParsedData.find(
       (group) => group.groupName === groupId
@@ -184,12 +175,16 @@ export async function POST(req: Request) {
 
     if (!currentGroupData) {
       return NextResponse.json(
-        { error: `No data found for group: ${groupId}` },
+        { error: `Group not found: ${groupId}` },
         { status: 404 }
       );
     }
 
-    const fullContext = createFullGroupContext(currentGroupData);
+    // --- FIX: Call the new context function with ALL data ---
+    const fullContext = createComprehensiveContext(
+      currentGroupData,
+      allParsedData
+    );
 
     const finalPrompt = `
 ${
@@ -198,11 +193,11 @@ ${
     : ""
 }
 
-<full_group_report_data for="${currentGroupData.groupName}">
+<knowledge_base>
 ${fullContext}
-</full_group_report_data>
+</knowledge_base>
 
-Based *only* on the data above, answer the following user question.
+Based *only* on the data within the <knowledge_base> tag, answer the user's question. If the user asks about a student not in the primary report, use the <global_student_directory> to find them and provide their information, clearly stating which group they are in.
 
 User Question: "${question}"
 `;
@@ -223,7 +218,7 @@ User Question: "${question}"
           blocked: true,
           message:
             args.finalMessage ||
-            "This conversation has been ended due to off-topic questions. Please try again in 24 hours.",
+            "This conversation has been ended due to off-topic questions.",
         });
       }
     }

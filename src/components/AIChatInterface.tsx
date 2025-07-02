@@ -3,8 +3,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "./ui/Card";
-import { db, ChatMessage } from "@/lib/db"; // NEW: Import the database instance
-import { useLiveQuery } from "dexie-react-hooks"; // NEW: Import the Dexie hook
+import { db, ChatMessage } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 
 interface AIChatInterfaceProps {
   selectedGroup: string;
@@ -15,17 +15,14 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // --- NEW: STATE MANAGEMENT FOR BLOCKING ---
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState("");
 
-  // --- NEW: LIVE QUERY TO GET MESSAGES FROM DEXIE ---
   const chatHistory = useLiveQuery(
     () => db.chatMessages.where({ groupId: selectedGroup }).sortBy("timestamp"),
-    [selectedGroup] // Re-run the query whenever selectedGroup changes
+    [selectedGroup]
   );
 
-  // --- NEW: FUNCTION TO ADD MESSAGES TO DB ---
   const addMessage = async (message: Omit<ChatMessage, "id" | "timestamp">) => {
     await db.chatMessages.add({
       ...message,
@@ -33,12 +30,14 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     });
   };
 
-  // --- NEW: SCROLL TO BOTTOM OF CHAT ---
+  // --- FIX: This useEffect dependency is changed to prevent unwanted scrolling ---
+  // It now only runs when the NUMBER of messages changes, not when the chatHistory object itself is replaced.
+  // This stops the scroll from happening when you just switch groups.
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+  }, [chatHistory?.length]); // The fix is changing [chatHistory] to [chatHistory?.length]
+  // --- END OF FIX ---
 
-  // --- NEW: BLOCKING LOGIC ---
   useEffect(() => {
     const blockInfoJSON = localStorage.getItem(`blockInfo_${selectedGroup}`);
     if (blockInfoJSON) {
@@ -49,7 +48,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
         setIsBlocked(true);
         setBlockMessage(blockInfo.message);
       } else {
-        // Block has expired, clear it
         localStorage.removeItem(`blockInfo_${selectedGroup}`);
       }
     } else {
@@ -63,20 +61,17 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     if (!question.trim() || !selectedGroup || isLoading || isBlocked) return;
 
     const userMessageContent = question;
-    setQuestion(""); // Clear input immediately
+    setQuestion("");
     setIsLoading(true);
 
-    // Add user message to local DB
     await addMessage({
       groupId: selectedGroup,
       role: "user",
       content: userMessageContent,
     });
 
-    // --- NEW: CONVERSATION RECAP LOGIC ---
     let recap = "";
     if (chatHistory && chatHistory.length > 0) {
-      // Create a recap of the last 4 messages
       recap = chatHistory
         .slice(-4)
         .map((msg) => `<${msg.role}>${msg.content}</${msg.role}>`)
@@ -103,7 +98,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
 
       const data = await response.json();
 
-      // --- NEW: HANDLE BLOCK RESPONSE FROM API ---
       if (data.blocked) {
         const finalMessage =
           data.message || "This conversation has been ended.";
@@ -112,7 +106,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
           role: "model",
           content: finalMessage,
         });
-        // Set block in localStorage
         localStorage.setItem(
           `blockInfo_${selectedGroup}`,
           JSON.stringify({ message: finalMessage, timestamp: new Date() })

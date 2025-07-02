@@ -1,13 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/groups/[groupId]/students/[studentName]/page.tsx
-"use client"; // This component uses recharts which requires client-side rendering
+"use client";
 
 import React from "react";
-import {
-  parseAllGroupsData,
-  ParsedBerlitzData,
-  AttendanceRecord,
-} from "@/lib/dataParser";
+import { parseAllGroupsData, ParsedBerlitzData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
@@ -27,7 +22,8 @@ interface StudentReportPageProps {
   };
 }
 
-// Function to generate static paths for all students across all groups
+// NOTE: This function is for build-time optimization (Static Site Generation).
+// It does not need to be a client component.
 export async function generateStaticParams() {
   const allParsedData: ParsedBerlitzData[] =
     parseAllGroupsData(rawBerlitzGroups);
@@ -49,8 +45,6 @@ const StudentReportPage = ({ params }: StudentReportPageProps) => {
   const decodedGroupId = decodeURIComponent(groupId);
   const decodedStudentName = decodeURIComponent(studentName);
 
-  // Note: For a client component, data fetching would ideally use a hook like `useSWR` or `react-query`.
-  // Since our data is static, we can parse it directly here.
   const allParsedData: ParsedBerlitzData[] = React.useMemo(
     () => parseAllGroupsData(rawBerlitzGroups),
     []
@@ -157,7 +151,8 @@ const StudentReportPage = ({ params }: StudentReportPageProps) => {
   };
 
   return (
-    <main className="container mx-auto py-8 px-4">
+    // --- FIX: Added max-width for better control on large screens ---
+    <main className="container mx-auto max-w-5xl py-8 px-4">
       <h1 className="text-3xl md:text-4xl font-extrabold mb-6 text-foreground text-center">
         Report for {decodedStudentName} <br />
         <span className="text-xl text-muted-foreground">
@@ -165,56 +160,63 @@ const StudentReportPage = ({ params }: StudentReportPageProps) => {
         </span>
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      {/* --- FIX: Changed grid to stack on medium screens and go horizontal only on large screens --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         <Card>
-          <h2 className="text-xl font-semibold mb-2 text-foreground">
-            Summary
+          <h2 className="text-xl font-semibold mb-4 text-foreground">
+            Performance Summary
           </h2>
-          <div className="space-y-1 text-sm text-muted-foreground">
-            <p>
-              <strong className="text-foreground">Course:</strong>{" "}
-              {currentGroupData.metadata.name} {currentGroupData.metadata.level}
+          <div className="space-y-2 text-sm">
+            <p className="flex justify-between">
+              <strong className="text-foreground">Course:</strong>
+              <span>
+                {currentGroupData.metadata.name}{" "}
+                {currentGroupData.metadata.level}
+              </span>
             </p>
             {currentGroupData.metadata.additionalInfo.length > 0 && (
-              <p>
-                <strong className="text-foreground">Additional Info:</strong>{" "}
-                {currentGroupData.metadata.additionalInfo.join(", ")}
+              <p className="flex justify-between">
+                <strong className="text-foreground">Info:</strong>
+                <span>
+                  {currentGroupData.metadata.additionalInfo.join(", ")}
+                </span>
               </p>
             )}
-            {/* CHANGED: "Classes" to "Sessions" */}
-            <p>
+            <p className="flex justify-between">
               <strong className="text-foreground">
                 Total Sessions Tracked:
-              </strong>{" "}
-              {totalSessionsTrackedForStudent}
+              </strong>
+              <span>{totalSessionsTrackedForStudent}</span>
             </p>
-            <p>
-              <strong className="text-foreground">On-time:</strong>{" "}
-              {onTimeCount} sessions
+            <p className="flex justify-between">
+              <strong className="text-foreground">On-time:</strong>
+              <span>{onTimeCount} sessions</span>
             </p>
-            <p>
-              <strong className="text-foreground">Late:</strong> {lateCount}{" "}
-              sessions ({totalMinutesLate} total minutes late)
+            <p className="flex justify-between">
+              <strong className="text-foreground">Late:</strong>
+              <span>
+                {lateCount} sessions ({totalMinutesLate} min total)
+              </span>
             </p>
-            <p>
-              <strong className="text-foreground">Absent:</strong> {absentCount}{" "}
-              sessions
+            <p className="flex justify-between">
+              <strong className="text-foreground">Absent:</strong>
+              <span>{absentCount} sessions</span>
             </p>
           </div>
-          <p className="text-lg mt-4">
-            <strong className="text-foreground">
-              Overall Attendance Rate:
-            </strong>{" "}
+          <div className="border-t border-border my-4"></div>
+          <p className="text-lg flex justify-between">
+            <strong className="text-foreground">Attendance Rate:</strong>
             <span className="font-bold text-foreground">{attendanceRate}%</span>
           </p>
           <p
-            className={`font-bold text-lg mt-2 ${
+            className={`font-bold text-lg mt-2 flex justify-between ${
               complianceStatus === "Meets Requirement"
                 ? "text-success-600"
                 : "text-destructive"
             }`}
           >
-            Compliance: {complianceStatus} (Min: {requiredMinAttendance}%)
+            <strong>Compliance Status:</strong>
+            <span>{complianceStatus}</span>
           </p>
         </Card>
 
@@ -290,8 +292,7 @@ const StudentReportPage = ({ params }: StudentReportPageProps) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                      ${
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         record.status === "On-time"
                           ? "bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-100"
                           : record.status === "Late"

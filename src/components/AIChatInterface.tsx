@@ -5,10 +5,29 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card } from "./ui/Card";
 import { db, ChatMessage } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { Sparkles } from "lucide-react"; // Using an icon for the welcome message
 
 interface AIChatInterfaceProps {
   selectedGroup: string;
 }
+
+// --- NEW: A stylish welcome message component ---
+const ChatWelcomeMessage = ({ groupName }: { groupName: string }) => (
+  <div className="flex flex-col items-center justify-center h-full text-center p-4">
+    <div className="p-4 bg-primary/10 rounded-full mb-4">
+      <Sparkles className="w-8 h-8 text-primary" />
+    </div>
+    <h2 className="text-2xl font-bold text-foreground mb-2">
+      Chat with Max, your AI Assistant
+    </h2>
+    <p className="text-muted-foreground max-w-md">
+      I have access to the full report for the{" "}
+      <span className="font-bold text-foreground">{groupName}</span> group. Ask
+      me anything about attendance, progress, or student performance!
+    </p>
+  </div>
+);
+// --- END OF NEW COMPONENT ---
 
 const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   const [question, setQuestion] = useState("");
@@ -30,13 +49,13 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     });
   };
 
-  // --- FIX: This useEffect dependency is changed to prevent unwanted scrolling ---
-  // It now only runs when the NUMBER of messages changes, not when the chatHistory object itself is replaced.
-  // This stops the scroll from happening when you just switch groups.
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory?.length]); // The fix is changing [chatHistory] to [chatHistory?.length]
-  // --- END OF FIX ---
+    // Only scroll if there are messages
+    if (chatHistory && chatHistory.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatHistory?.length]);
 
   useEffect(() => {
     const blockInfoJSON = localStorage.getItem(`blockInfo_${selectedGroup}`);
@@ -135,24 +154,32 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   return (
     <Card className="p-4 md:p-6 flex flex-col h-[70vh]">
       <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-        {chatHistory?.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${
-              msg.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
+        {/* --- FIX: Logic to show Welcome Message or Chat History --- */}
+        {chatHistory && chatHistory.length === 0 && !isLoading ? (
+          <ChatWelcomeMessage groupName={selectedGroup} />
+        ) : (
+          chatHistory?.map((msg) => (
             <div
-              className={`max-w-xs md:max-w-md lg:max-w-2xl rounded-lg px-4 py-2 text-white ${
-                msg.role === "user"
-                  ? "bg-primary"
-                  : "bg-muted text-muted-foreground"
+              key={msg.id}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              <div
+                // --- FIX: text-white is now applied conditionally ---
+                className={`max-w-xs md:max-w-md lg:max-w-2xl rounded-lg px-4 py-2 ${
+                  msg.role === "user"
+                    ? "bg-primary text-white" // User bubble: blue background, white text
+                    : "bg-muted text-muted-foreground" // AI bubble: gray background, gray text (works in both themes)
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
+        {/* --- END OF FIX --- */}
+
         {isLoading && (
           <div className="flex justify-start">
             <div className="max-w-xs md:max-w-md lg:max-w-2xl rounded-lg px-4 py-2 bg-muted text-muted-foreground">

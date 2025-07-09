@@ -1,12 +1,11 @@
 // src/app/groups/[groupId]/students/[studentName]/page.tsx
-import React from "react";
+import React from "react"; // Explicitly import React for React.ReactElement
 import { parseAllGroupsData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
 import StudentReportClient from "@/components/StudentReportClient";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 
-// This interface is correct and does not need to change.
 interface StudentReportPageProps {
   params: {
     groupId: string;
@@ -15,8 +14,9 @@ interface StudentReportPageProps {
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-// This function is correct and does not need to change.
-export async function generateStaticParams() {
+// --- FIX 1: Removed the unnecessary `async` keyword ---
+// The function does not use `await`, so making it synchronous simplifies type inference.
+export function generateStaticParams() {
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
   const params: { groupId: string; studentName: string }[] = [];
 
@@ -31,11 +31,11 @@ export async function generateStaticParams() {
   return params;
 }
 
-// --- FINAL FIX ---
-// Instead of destructuring in the function signature, we accept the whole `props` object.
-// This is the most robust way to type async Server Components and avoids build errors.
-const StudentReportPage = async (props: StudentReportPageProps) => {
-  // We then destructure the params from the props object inside the function body.
+// --- FIX 2: Added an explicit return type for the async component ---
+// This clarifies to TypeScript what the function returns, resolving ambiguity about its props.
+const StudentReportPage = async (
+  props: StudentReportPageProps
+): Promise<React.ReactElement> => {
   const { params } = props;
   const decodedGroupId = decodeURIComponent(params.groupId);
   const decodedStudentName = decodeURIComponent(params.studentName);

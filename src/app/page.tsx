@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/page.tsx
-"use client"; // This becomes a client component
+"use client";
 
 import React, { useState, useMemo } from "react";
 import { parseAllGroupsData, ParsedBerlitzData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
+import { handoverReport } from "@/data/handoverReport";
 
 // Import client components
 import OverviewDashboard from "@/components/OverviewDashboard";
 import StudentListAndReports from "@/components/StudentListAndReports";
 import AIChatInterface from "@/components/AIChatInterface";
+import { ReportModal } from "@/components/ReportModal";
 import { Card } from "@/components/ui/Card";
 import {
   Select,
@@ -18,22 +20,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/Select";
+import { BookText } from "lucide-react";
 
 export default function Home() {
-  // Parse all data once when the component mounts using useMemo for efficiency
   const allParsedData: ParsedBerlitzData[] = useMemo(() => {
     return parseAllGroupsData(rawBerlitzGroups);
-  }, []); // Empty dependency array means it runs once on mount
+  }, []);
 
-  // Initialize selected group with the first group found, or an empty string
   const [selectedGroup, setSelectedGroup] = useState<string>(
     allParsedData.length > 0 ? allParsedData[0].groupName : ""
   );
 
-  // Find the currently selected group's data whenever selectedGroup changes
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
   const currentGroupData = useMemo(() => {
     return allParsedData.find((group) => group.groupName === selectedGroup);
-  }, [selectedGroup, allParsedData]); // Re-runs if selectedGroup or allParsedData changes
+  }, [selectedGroup, allParsedData]);
 
   if (allParsedData.length === 0) {
     return (
@@ -52,7 +54,7 @@ export default function Home() {
         Berlitz Class Report Dashboard
       </h1>
 
-      {/* Group Selection Dropdown */}
+      {/* Control Card */}
       <Card className="mb-8 p-4 flex flex-col sm:flex-row items-center justify-center gap-4">
         <label
           htmlFor="group-select"
@@ -60,19 +62,29 @@ export default function Home() {
         >
           Select Group:
         </label>
-        <Select
+
+        {/* --- FINAL FIX: Reverted to the simple select pattern that your components expect --- */}
+        {/* This uses `value` and a standard `onChange` handler, and does not use SelectTrigger/SelectValue */}
+        <select
           id="group-select"
           value={selectedGroup}
-          // The onChange event for <select> element
           onChange={(e) => setSelectedGroup(e.target.value)}
-          className="w-full sm:max-w-xs"
+          className="w-full sm:max-w-xs p-2 border border-input rounded-md bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
         >
           {allParsedData.map((group) => (
-            <SelectItem key={group.groupName} value={group.groupName}>
+            <option key={group.groupName} value={group.groupName}>
               {group.groupName}
-            </SelectItem>
+            </option>
           ))}
-        </Select>
+        </select>
+
+        <button
+          onClick={() => setIsReportModalOpen(true)}
+          className="button button-outline w-full sm:w-auto"
+        >
+          <BookText className="mr-2 h-4 w-4" />
+          View Handover Report
+        </button>
       </Card>
 
       {/* Display data for the selected group */}
@@ -82,7 +94,6 @@ export default function Home() {
             {currentGroupData.metadata.groupName}
           </h2>
 
-          {/* Overview Dashboard */}
           <section className="mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">
               Class Overview
@@ -90,25 +101,22 @@ export default function Home() {
             <OverviewDashboard parsedData={currentGroupData} />
           </section>
 
-          {/* Student Reports Section */}
           <section className="mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">
               Student Performance Reports
             </h2>
             <StudentListAndReports
-              groupId={currentGroupData.groupName} // Pass group ID for linking
+              groupId={currentGroupData.groupName}
               studentNames={currentGroupData.metadata.studentNames}
               attendanceData={currentGroupData.attendance}
             />
           </section>
 
-          {/* AI Q&A Section */}
           <section className="mb-12">
             <h2 className="text-2xl md:text-3xl font-bold mb-6 text-foreground">
               Ask the AI Assistant
             </h2>
-            <AIChatInterface selectedGroup={currentGroupData.groupName} />{" "}
-            {/* Pass selected group to AI */}
+            <AIChatInterface selectedGroup={currentGroupData.groupName} />
           </section>
         </>
       ) : (
@@ -117,6 +125,13 @@ export default function Home() {
           dropdown.
         </div>
       )}
+
+      {/* Render the modal component. It's controlled by our state. */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportContent={handoverReport}
+      />
     </main>
   );
 }

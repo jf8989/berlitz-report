@@ -64,10 +64,11 @@ const StudentReportClient = ({
       ? "Meets Requirement"
       : "Does Not Meet Requirement";
 
+  // --- FIX: Changed color definitions to match the dashboard's theme variables ---
   const studentAttendanceData = [
-    { name: "On-time", value: onTimeCount, fill: "hsl(var(--primary))" },
-    { name: "Late", value: lateCount, fill: "hsl(var(--warning))" },
-    { name: "Absent", value: absentCount, fill: "hsl(var(--destructive))" },
+    { name: "On-time", value: onTimeCount, fill: "var(--primary)" },
+    { name: "Late", value: lateCount, fill: "var(--warning)" },
+    { name: "Absent", value: absentCount, fill: "var(--destructive)" },
   ];
 
   const tooltipStyle = {

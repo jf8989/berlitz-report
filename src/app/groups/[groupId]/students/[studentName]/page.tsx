@@ -1,5 +1,5 @@
 // src/app/groups/[groupId]/students/[studentName]/page.tsx
-import React from "react"; // Explicitly import React for React.ReactElement
+import React from "react";
 import { parseAllGroupsData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
 import StudentReportClient from "@/components/StudentReportClient";
@@ -14,8 +14,7 @@ interface StudentReportPageProps {
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-// --- FIX 1: Removed the unnecessary `async` keyword ---
-// The function does not use `await`, so making it synchronous simplifies type inference.
+// This function is correct. It does not need to be async.
 export function generateStaticParams() {
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
   const params: { groupId: string; studentName: string }[] = [];
@@ -31,11 +30,10 @@ export function generateStaticParams() {
   return params;
 }
 
-// --- FIX 2: Added an explicit return type for the async component ---
-// This clarifies to TypeScript what the function returns, resolving ambiguity about its props.
-const StudentReportPage = async (
-  props: StudentReportPageProps
-): Promise<React.ReactElement> => {
+// --- THE DEFINITIVE FIX ---
+// The component is made synchronous by removing the `async` keyword and the Promise return type.
+// Since no `await` calls are used, `async` is not needed and was the source of the build error.
+const StudentReportPage = (props: StudentReportPageProps) => {
   const { params } = props;
   const decodedGroupId = decodeURIComponent(params.groupId);
   const decodedStudentName = decodeURIComponent(params.studentName);

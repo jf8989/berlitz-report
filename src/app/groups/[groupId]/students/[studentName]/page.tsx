@@ -2,15 +2,18 @@
 import React from "react";
 import { parseAllGroupsData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
-import StudentReportClient from "@/components/StudentReportClient"; // Import the new client component
+import StudentReportClient from "@/components/StudentReportClient";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 
+// --- FIX: Update the props interface to be compatible with Next.js Page Props ---
+// We must include searchParams, even if it's not used, to satisfy the build process.
 interface StudentReportPageProps {
   params: {
     groupId: string;
     studentName: string;
   };
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
 // This function can stay. It runs on the server at build time.
@@ -21,7 +24,6 @@ export async function generateStaticParams() {
   allParsedData.forEach((group) => {
     group.metadata.studentNames.forEach((studentName) => {
       params.push({
-        // No need to encode here, Next.js handles it.
         groupId: group.groupName,
         studentName: studentName,
       });
@@ -30,12 +32,10 @@ export async function generateStaticParams() {
   return params;
 }
 
-// This is now a Server Component. It's async and doesn't use "use client".
+// This is a Server Component.
 const StudentReportPage = async ({ params }: StudentReportPageProps) => {
-  const { groupId, studentName } = params;
-  // We can decode here since the component is simpler.
-  const decodedGroupId = decodeURIComponent(groupId);
-  const decodedStudentName = decodeURIComponent(studentName);
+  const decodedGroupId = decodeURIComponent(params.groupId);
+  const decodedStudentName = decodeURIComponent(params.studentName);
 
   // Data fetching happens directly on the server.
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
@@ -72,8 +72,7 @@ const StudentReportPage = async ({ params }: StudentReportPageProps) => {
         <Card className="p-6">
           <p className="text-lg">
             No attendance data for student: &quot;{decodedStudentName}&quot; in
-            group &quot;
-            {decodedGroupId}&quot;.
+            group &quot;{decodedGroupId}&quot;.
           </p>
           <Link href="/" className="button button-secondary mt-8">
             Back to Dashboard

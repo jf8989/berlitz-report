@@ -1,42 +1,54 @@
 // src/app/groups/[groupId]/students/[studentName]/page.tsx
 import React from "react";
+
 import { parseAllGroupsData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
 import StudentReportClient from "@/components/StudentReportClient";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 
-interface StudentReportPageProps {
-  params: {
-    groupId: string;
-    studentName: string;
-  };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
+// ────────────────────────────────────────────────────────────
+// Types
+// ────────────────────────────────────────────────────────────
+type Params = {
+  groupId: string;
+  studentName: string;
+};
 
-// This function is correct. It does not need to be async.
+type SearchParams = { [key: string]: string | string[] | undefined };
+
+// ────────────────────────────────────────────────────────────
+// Static params for SSG
+// ────────────────────────────────────────────────────────────
 export function generateStaticParams() {
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
-  const params: { groupId: string; studentName: string }[] = [];
+  const params: Params[] = [];
 
   allParsedData.forEach((group) => {
     group.metadata.studentNames.forEach((studentName) => {
       params.push({
         groupId: group.groupName,
-        studentName: studentName,
+        studentName,
       });
     });
   });
+
   return params;
 }
 
-// --- THE DEFINITIVE FIX ---
-// The component is made synchronous by removing the `async` keyword and the Promise return type.
-// Since no `await` calls are used, `async` is not needed and was the source of the build error.
-const StudentReportPage = (props: StudentReportPageProps) => {
-  const { params } = props;
-  const decodedGroupId = decodeURIComponent(params.groupId);
-  const decodedStudentName = decodeURIComponent(params.studentName);
+// ────────────────────────────────────────────────────────────
+// Page component (async — params is a Promise in Next v15)
+// ────────────────────────────────────────────────────────────
+export default async function StudentReportPage({
+  params,
+}: {
+  params: Promise<Params>;
+  searchParams?: SearchParams;
+}) {
+  const { groupId, studentName } = await params;
+
+  const decodedGroupId = decodeURIComponent(groupId);
+  const decodedStudentName = decodeURIComponent(studentName);
 
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
   const currentGroupData = allParsedData.find(
@@ -87,6 +99,4 @@ const StudentReportPage = (props: StudentReportPageProps) => {
       studentRecords={studentRecords}
     />
   );
-};
-
-export default StudentReportPage;
+}

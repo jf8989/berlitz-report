@@ -8,6 +8,8 @@ import { db, ChatMessage } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Sparkles, BookUser, MessageSquareQuote, Star } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+// --- FIX: Import the Next.js Image component ---
+import Image from "next/image";
 
 interface AIChatInterfaceProps {
   selectedGroup: string;
@@ -79,6 +81,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const chatHistory = useLiveQuery(
     () => db.chatMessages.where({ groupId: selectedGroup }).sortBy("timestamp"),
@@ -93,8 +96,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     if (chatHistory && chatHistory.length > 0) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatHistory?.length]);
+  }, [chatHistory]);
 
   useEffect(() => {
     const blockInfoJSON = localStorage.getItem(`blockInfo_${selectedGroup}`);
@@ -187,6 +189,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
       });
     } finally {
       setIsLoading(false);
+      inputRef.current?.focus();
     }
   };
 
@@ -200,8 +203,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
           />
         ) : (
           chatHistory?.map((msg) => {
-            // --- NEW LOGIC START ---
-            // Check for our special image code and replace it with Markdown.
             let displayContent = msg.content;
             if (displayContent.includes("%%DISPLAY_IMAGE_BASF7%%")) {
               displayContent = displayContent.replace(
@@ -209,7 +210,6 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
                 "![BASF Group Surprise](/images/basf7.jpg)"
               );
             }
-            // --- NEW LOGIC END ---
 
             return (
               <div
@@ -228,17 +228,26 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
                   <div className="prose dark:prose-invert">
                     <ReactMarkdown
                       components={{
-                        img: ({ node, ...props }) => (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            className="max-w-full rounded-md border"
-                            alt="AI response image"
-                            {...props}
-                          />
-                        ),
+                        // --- FIX: Replace the default `img` renderer with the Next.js `Image` component ---
+                        img: ({ node, src, alt, width, height, ...props }) => {
+                          // The `src` prop must be a string for Next.js Image.
+                          if (!src || typeof src !== "string") return null;
+                          // Ensure width and height are numbers for Next.js Image
+                          const parsedWidth = width ? Number(width) : 300;
+                          const parsedHeight = height ? Number(height) : 200;
+                          return (
+                            <Image
+                              src={src as string}
+                              alt={alt || "Image from chat"}
+                              width={parsedWidth}
+                              height={parsedHeight}
+                              className="max-w-full rounded-md border"
+                              {...props}
+                            />
+                          );
+                        },
                       }}
                     >
-                      {/* Use the modified content here */}
                       {displayContent}
                     </ReactMarkdown>
                   </div>
@@ -271,6 +280,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
         ) : (
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
             <textarea
+              ref={inputRef}
               className="w-full p-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:outline-none bg-background text-foreground resize-none"
               rows={1}
               placeholder={`Ask about ${

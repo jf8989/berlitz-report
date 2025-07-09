@@ -36,7 +36,7 @@ if (!API_KEY || !SYSTEM_PROMPT) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// MODIFIED: Removed the 'getHandoverReportNotes' tool definition.
+// --- NEW: Added the displayTheBASFImage tool ---
 const tools: Tool[] = [
   {
     functionDeclarations: [
@@ -56,11 +56,21 @@ const tools: Tool[] = [
           required: ["finalMessage"],
         },
       },
+      {
+        name: "displayTheBASFImage",
+        description:
+          "Displays the special collage picture of the BASF Lv7 group when a user confirms they want to see it.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {}, // No parameters needed
+        },
+      },
     ],
   },
 ];
 
 const model = genAI.getGenerativeModel({
+  // --- FIX: Corrected model name ---
   model: "gemini-2.5-flash",
   systemInstruction: SYSTEM_PROMPT,
   tools: tools,
@@ -89,6 +99,7 @@ function createComprehensiveContext(
   currentGroupData: ParsedBerlitzData,
   allData: ParsedBerlitzData[]
 ): string {
+  // This function remains the same
   let context = `
 <full_group_report_data for="${currentGroupData.metadata.groupName}">
   <group_metadata>
@@ -189,7 +200,6 @@ export async function POST(req: Request) {
       history: history || [],
     });
 
-    // MODIFIED: The handoverReport is now injected directly into the initial prompt.
     const initialPrompt = `
 <knowledge_base>
 ${fullContext}
@@ -205,14 +215,12 @@ User Question: "${question}"
     const result = await chat.sendMessage(initialPrompt);
     const response = result.response;
 
-    // MODIFIED: Simplified the loop to handle only the remaining 'handleOffTopicUser' tool.
-    // Any other tool call will now result in an error, highlighting a configuration issue
-    // (e.g., an outdated SYSTEM_PROMPT).
-    while (response.candidates?.[0]?.content?.parts[0]?.functionCall) {
-      const functionCall = response.candidates[0].content.parts[0].functionCall;
+    // --- REVISED LOGIC: This section now correctly handles tool calls. ---
+    const functionCall =
+      response.candidates?.[0]?.content?.parts[0]?.functionCall;
 
+    if (functionCall) {
       console.log(`AI is attempting to call tool: ${functionCall.name}`);
-
       if (functionCall.name === "handleOffTopicUser") {
         const args = functionCall.args as { finalMessage: string };
         return NextResponse.json({
@@ -221,16 +229,21 @@ User Question: "${question}"
             args.finalMessage ||
             "This conversation has been ended due to off-topic questions.",
         });
-      } else {
-        // If the tool is unknown, we should not proceed. This can happen if the
-        // SYSTEM_PROMPT is out of sync with the available tools (e.g., it still
-        // refers to the removed 'getHandoverReportNotes' tool).
-        throw new Error(`Unknown tool called: ${functionCall.name}`);
       }
-    }
 
-    const text = response.text();
-    return NextResponse.json({ answer: text });
+      if (functionCall.name === "displayTheBASFImage") {
+        // If the AI calls this tool, we don't need to talk to it further.
+        // We directly return the special code that the frontend will use to show the image.
+        return NextResponse.json({ answer: "%%DISPLAY_IMAGE_BASF7%%" });
+      }
+
+      // Handle unknown tools
+      throw new Error(`Unknown tool called: ${functionCall.name}`);
+    } else {
+      // If there was no function call, just return the AI's text response.
+      const text = response.text();
+      return NextResponse.json({ answer: text });
+    }
   } catch (error: unknown) {
     console.error("API Error:", error);
     let errorMessage = "Failed to process your request.";

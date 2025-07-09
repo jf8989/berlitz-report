@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/components/AIChatInterface.tsx
 "use client";
 
@@ -5,14 +6,56 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card } from "./ui/Card";
 import { db, ChatMessage } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Sparkles } from "lucide-react"; // Using an icon for the welcome message
+import { Sparkles, BookUser, MessageSquareQuote, Star } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface AIChatInterfaceProps {
   selectedGroup: string;
 }
 
-// --- NEW: A stylish welcome message component ---
-const ChatWelcomeMessage = ({ groupName }: { groupName: string }) => (
+const ConversationStarters = ({
+  onPromptClick,
+}: {
+  onPromptClick: (prompt: string) => void;
+}) => {
+  const starters = [
+    {
+      icon: <BookUser className="w-4 h-4 mr-2" />,
+      text: "What was Juanfra's teaching style?",
+    },
+    {
+      icon: <MessageSquareQuote className="w-4 h-4 mr-2" />,
+      text: "Tell me about a specific student's personality.",
+    },
+    {
+      icon: <Star className="w-4 h-4 mr-2" />,
+      text: "Show me a memorable moment from a class.",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4 mt-4">
+      {starters.map((starter, index) => (
+        <button
+          key={index}
+          onClick={() => onPromptClick(starter.text)}
+          className="button button-outline text-sm flex items-center justify-center text-left p-2"
+        >
+          {starter.icon}
+          <span>{starter.text}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const ChatWelcomeMessage = ({
+  groupName,
+  onPromptClick,
+}: {
+  groupName: string;
+  onPromptClick: (prompt: string) => void;
+}) => (
   <div className="flex flex-col items-center justify-center h-full text-center p-4">
     <div className="p-4 bg-primary/10 rounded-full mb-4">
       <Sparkles className="w-8 h-8 text-primary" />
@@ -20,20 +63,20 @@ const ChatWelcomeMessage = ({ groupName }: { groupName: string }) => (
     <h2 className="text-2xl font-bold text-foreground mb-2">
       Chat with Max, your AI Assistant
     </h2>
-    <p className="text-muted-foreground max-w-md">
-      I have access to the full report for the{" "}
-      <span className="font-bold text-foreground">{groupName}</span> group. Ask
-      me anything about attendance, progress, or student performance!
+    <p className="text-muted-foreground max-w-lg">
+      I can answer questions about attendance for the{" "}
+      <span className="font-bold text-foreground">{groupName}</span> group, or
+      you can ask about Juanfra&#39;s personal notes on any student or his
+      teaching style. Try one of the prompts below!
     </p>
+    <ConversationStarters onPromptClick={onPromptClick} />
   </div>
 );
-// --- END OF NEW COMPONENT ---
 
 const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   const [question, setQuestion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockMessage, setBlockMessage] = useState("");
 
@@ -43,14 +86,10 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   );
 
   const addMessage = async (message: Omit<ChatMessage, "id" | "timestamp">) => {
-    await db.chatMessages.add({
-      ...message,
-      timestamp: new Date(),
-    });
+    await db.chatMessages.add({ ...message, timestamp: new Date() });
   };
 
   useEffect(() => {
-    // Only scroll if there are messages
     if (chatHistory && chatHistory.length > 0) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
@@ -75,13 +114,16 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     }
   }, [selectedGroup]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!question.trim() || !selectedGroup || isLoading || isBlocked) return;
+  const handleSubmit = async (e?: React.FormEvent, promptText?: string) => {
+    if (e) e.preventDefault();
+    const userMessageContent = promptText || question;
+    if (!userMessageContent.trim() || !selectedGroup || isLoading || isBlocked)
+      return;
 
-    const userMessageContent = question;
     setQuestion("");
     setIsLoading(true);
+
+    const currentChatHistory = chatHistory || [];
 
     await addMessage({
       groupId: selectedGroup,
@@ -89,13 +131,10 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
       content: userMessageContent,
     });
 
-    let recap = "";
-    if (chatHistory && chatHistory.length > 0) {
-      recap = chatHistory
-        .slice(-4)
-        .map((msg) => `<${msg.role}>${msg.content}</${msg.role}>`)
-        .join("\n");
-    }
+    const historyForAPI = currentChatHistory.slice(-6).map((msg) => ({
+      role: msg.role,
+      parts: [{ text: msg.content }],
+    }));
 
     try {
       const response = await fetch("/api/chat", {
@@ -104,7 +143,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
         body: JSON.stringify({
           question: userMessageContent,
           groupId: selectedGroup,
-          recap,
+          history: historyForAPI,
         }),
       });
 
@@ -154,9 +193,11 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
   return (
     <Card className="p-4 md:p-6 flex flex-col h-[70vh]">
       <div className="flex-1 overflow-y-auto pr-4 space-y-4">
-        {/* --- FIX: Logic to show Welcome Message or Chat History --- */}
         {chatHistory && chatHistory.length === 0 && !isLoading ? (
-          <ChatWelcomeMessage groupName={selectedGroup} />
+          <ChatWelcomeMessage
+            groupName={selectedGroup}
+            onPromptClick={(prompt) => handleSubmit(undefined, prompt)}
+          />
         ) : (
           chatHistory?.map((msg) => (
             <div
@@ -166,19 +207,32 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
               }`}
             >
               <div
-                // --- FIX: text-white is now applied conditionally ---
                 className={`max-w-xs md:max-w-md lg:max-w-2xl rounded-lg px-4 py-2 ${
                   msg.role === "user"
-                    ? "bg-primary text-white" // User bubble: blue background, white text
-                    : "bg-muted text-muted-foreground" // AI bubble: gray background, gray text (works in both themes)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                <div className="prose dark:prose-invert prose-p:my-0">
+                  <ReactMarkdown
+                    components={{
+                      img: ({ node, ...props }) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          className="max-w-full rounded-md border"
+                          alt="AI response image"
+                          {...props}
+                        />
+                      ),
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           ))
         )}
-        {/* --- END OF FIX --- */}
 
         {isLoading && (
           <div className="flex justify-start">

@@ -1,14 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/api/chat/route.ts
+
 import {
   GoogleGenerativeAI,
   HarmBlockThreshold,
   HarmCategory,
   Tool,
   SchemaType,
+  Part,
 } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { parseAllGroupsData, ParsedBerlitzData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
+import { handoverReport } from "@/data/handoverReport";
 
 let cachedParsedData: ParsedBerlitzData[] | null = null;
 
@@ -32,6 +36,7 @@ if (!API_KEY || !SYSTEM_PROMPT) {
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+// MODIFIED: Removed the 'getHandoverReportNotes' tool definition.
 const tools: Tool[] = [
   {
     functionDeclarations: [
@@ -56,7 +61,7 @@ const tools: Tool[] = [
 ];
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
+  model: "gemini-1.5-flash",
   systemInstruction: SYSTEM_PROMPT,
   tools: tools,
 });
@@ -80,12 +85,10 @@ const safetySettings = [
   },
 ];
 
-// --- FIX: This function now accepts ALL data to build a global student directory ---
 function createComprehensiveContext(
   currentGroupData: ParsedBerlitzData,
   allData: ParsedBerlitzData[]
 ): string {
-  // --- PART 1: Full, detailed report for the CURRENTLY SELECTED group ---
   let context = `
 <full_group_report_data for="${currentGroupData.metadata.groupName}">
   <group_metadata>
@@ -115,8 +118,7 @@ function createComprehensiveContext(
     );
     context += `    <student name="${student}">
       On-time: ${onTime}, Late: ${late}, Absent: ${absent}, Total Minutes Late: ${totalMinutesLate}
-    </student>
-`;
+    </student>\n`;
   });
 
   context += `  </student_specific_attendance>
@@ -129,8 +131,6 @@ function createComprehensiveContext(
 </full_group_report_data>
 `;
 
-  // --- PART 2: A directory of ALL students across ALL groups ---
-  // This gives the AI global awareness to answer questions like "Which group is Gustavo in?"
   context += `
 <global_student_directory>
   This is a list of all students and the group(s) they belong to. Use this to find a student if they are not in the currently selected group's report.
@@ -159,7 +159,7 @@ function createComprehensiveContext(
 
 export async function POST(req: Request) {
   try {
-    const { question, groupId, recap } = await req.json();
+    const { question, groupId, history } = await req.json();
 
     if (!groupId) {
       return NextResponse.json(
@@ -180,38 +180,39 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- FIX: Call the new context function with ALL data ---
     const fullContext = createComprehensiveContext(
       currentGroupData,
       allParsedData
     );
 
-    const finalPrompt = `
-${
-  recap
-    ? `<recap_of_previous_conversation>${recap}</recap_of_previous_conversation>`
-    : ""
-}
+    const chat = model.startChat({
+      history: history || [],
+    });
 
+    // MODIFIED: The handoverReport is now injected directly into the initial prompt.
+    const initialPrompt = `
 <knowledge_base>
 ${fullContext}
 </knowledge_base>
 
-Based *only* on the data within the <knowledge_base> tag, answer the user's question. If the user asks about a student not in the primary report, use the <global_student_directory> to find them and provide their information, clearly stating which group they are in.
+<handover_report>
+${handoverReport}
+</handover_report>
 
 User Question: "${question}"
 `;
 
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: finalPrompt }] }],
-      safetySettings,
-    });
-
+    const result = await chat.sendMessage(initialPrompt);
     const response = result.response;
-    const responseContent = response.candidates?.[0]?.content;
 
-    if (responseContent?.parts[0]?.functionCall) {
-      const functionCall = responseContent.parts[0].functionCall;
+    // MODIFIED: Simplified the loop to handle only the remaining 'handleOffTopicUser' tool.
+    // Any other tool call will now result in an error, highlighting a configuration issue
+    // (e.g., an outdated SYSTEM_PROMPT).
+    while (response.candidates?.[0]?.content?.parts[0]?.functionCall) {
+      const functionCall = response.candidates[0].content.parts[0].functionCall;
+
+      console.log(`AI is attempting to call tool: ${functionCall.name}`);
+
       if (functionCall.name === "handleOffTopicUser") {
         const args = functionCall.args as { finalMessage: string };
         return NextResponse.json({
@@ -220,6 +221,11 @@ User Question: "${question}"
             args.finalMessage ||
             "This conversation has been ended due to off-topic questions.",
         });
+      } else {
+        // If the tool is unknown, we should not proceed. This can happen if the
+        // SYSTEM_PROMPT is out of sync with the available tools (e.g., it still
+        // refers to the removed 'getHandoverReportNotes' tool).
+        throw new Error(`Unknown tool called: ${functionCall.name}`);
       }
     }
 

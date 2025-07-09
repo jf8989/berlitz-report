@@ -101,7 +101,7 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
     if (blockInfoJSON) {
       const blockInfo = JSON.parse(blockInfoJSON);
       const blockEndTime =
-        new Date(blockInfo.timestamp).getTime() + 24 * 60 * 60 * 1000;
+        new Date(blockInfo.timestamp).getTime() + 3 * 60 * 60 * 1000; // 3 hours
       if (Date.now() < blockEndTime) {
         setIsBlocked(true);
         setBlockMessage(blockInfo.message);
@@ -199,39 +199,53 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
             onPromptClick={(prompt) => handleSubmit(undefined, prompt)}
           />
         ) : (
-          chatHistory?.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
+          chatHistory?.map((msg) => {
+            // --- NEW LOGIC START ---
+            // Check for our special image code and replace it with Markdown.
+            let displayContent = msg.content;
+            if (displayContent.includes("%%DISPLAY_IMAGE_BASF7%%")) {
+              displayContent = displayContent.replace(
+                "%%DISPLAY_IMAGE_BASF7%%",
+                "![BASF Group Surprise](/images/basf7.jpg)"
+              );
+            }
+            // --- NEW LOGIC END ---
+
+            return (
               <div
-                className={`max-w-xs md:max-w-md lg:max-w-2xl rounded-lg px-4 py-2 ${
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
+                key={msg.id}
+                className={`flex ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
                 }`}
               >
-                <div className="prose dark:prose-invert prose-p:my-0">
-                  <ReactMarkdown
-                    components={{
-                      img: ({ node, ...props }) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          className="max-w-full rounded-md border"
-                          alt="AI response image"
-                          {...props}
-                        />
-                      ),
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
+                <div
+                  className={`max-w-xs md:max-w-md lg:max-w-2xl rounded-lg px-4 py-2 ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <div className="prose dark:prose-invert">
+                    <ReactMarkdown
+                      components={{
+                        img: ({ node, ...props }) => (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            className="max-w-full rounded-md border"
+                            alt="AI response image"
+                            {...props}
+                          />
+                        ),
+                      }}
+                    >
+                      {/* Use the modified content here */}
+                      {displayContent}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         {isLoading && (

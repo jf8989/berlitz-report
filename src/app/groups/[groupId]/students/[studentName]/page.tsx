@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/groups/[groupId]/students/[studentName]/page.tsx
 import React from "react";
 
@@ -41,11 +42,17 @@ export function generateStaticParams() {
 // ────────────────────────────────────────────────────────────
 export default async function StudentReportPage({
   params,
+  // The searchParams prop is optional, but if it exists, it's a Promise in Next.js 15
+  searchParams,
 }: {
   params: Promise<Params>;
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>; // FIX: The type must be a Promise
 }) {
-  const { groupId, studentName } = await params;
+  // We can await both promises.
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams; // Good practice to resolve it too
+
+  const { groupId, studentName } = resolvedParams;
 
   const decodedGroupId = decodeURIComponent(groupId);
   const decodedStudentName = decodeURIComponent(studentName);

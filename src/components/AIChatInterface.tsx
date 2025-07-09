@@ -8,7 +8,6 @@ import { db, ChatMessage } from "@/lib/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Sparkles, BookUser, MessageSquareQuote, Star } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-// --- FIX: Import the Next.js Image component ---
 import Image from "next/image";
 
 interface AIChatInterfaceProps {
@@ -228,22 +227,33 @@ const AIChatInterface: React.FC<AIChatInterfaceProps> = ({ selectedGroup }) => {
                   <div className="prose dark:prose-invert">
                     <ReactMarkdown
                       components={{
-                        // --- FIX: Replace the default `img` renderer with the Next.js `Image` component ---
+                        // --- FINAL FIX ---
+                        // Destructure `width` and `height` from the props passed by ReactMarkdown.
+                        // This removes them from the `...props` rest object, preventing the type error.
                         img: ({ node, src, alt, width, height, ...props }) => {
-                          // The `src` prop must be a string for Next.js Image.
-                          if (!src || typeof src !== "string") return null;
-                          // Ensure width and height are numbers for Next.js Image
-                          const parsedWidth = width ? Number(width) : 300;
-                          const parsedHeight = height ? Number(height) : 200;
+                          if (typeof src !== "string") return null;
+
+                          // Use the provided width/height, or fall back to defaults.
+                          // The `Number()` function correctly handles both string and number inputs.
+                          const finalWidth = width ? Number(width) : 300;
+                          const finalHeight = height ? Number(height) : 200;
+
                           return (
-                            <Image
-                              src={src as string}
-                              alt={alt || "Image from chat"}
-                              width={parsedWidth}
-                              height={parsedHeight}
-                              className="max-w-full rounded-md border"
-                              {...props}
-                            />
+                            <a
+                              href={src}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <Image
+                                src={src}
+                                alt={alt || "Image from chat"}
+                                width={finalWidth}
+                                height={finalHeight}
+                                className="max-w-full rounded-md border transition-opacity hover:opacity-80 cursor-pointer"
+                                {...props} // Spreading props is now safe
+                              />
+                            </a>
                           );
                         },
                       }}

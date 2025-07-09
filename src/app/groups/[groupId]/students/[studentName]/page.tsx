@@ -6,8 +6,7 @@ import StudentReportClient from "@/components/StudentReportClient";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 
-// --- FIX: Update the props interface to be compatible with Next.js Page Props ---
-// We must include searchParams, even if it's not used, to satisfy the build process.
+// This interface is correct and does not need to change.
 interface StudentReportPageProps {
   params: {
     groupId: string;
@@ -16,7 +15,7 @@ interface StudentReportPageProps {
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-// This function can stay. It runs on the server at build time.
+// This function is correct and does not need to change.
 export async function generateStaticParams() {
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
   const params: { groupId: string; studentName: string }[] = [];
@@ -32,18 +31,20 @@ export async function generateStaticParams() {
   return params;
 }
 
-// This is a Server Component.
-const StudentReportPage = async ({ params }: StudentReportPageProps) => {
+// --- FINAL FIX ---
+// Instead of destructuring in the function signature, we accept the whole `props` object.
+// This is the most robust way to type async Server Components and avoids build errors.
+const StudentReportPage = async (props: StudentReportPageProps) => {
+  // We then destructure the params from the props object inside the function body.
+  const { params } = props;
   const decodedGroupId = decodeURIComponent(params.groupId);
   const decodedStudentName = decodeURIComponent(params.studentName);
 
-  // Data fetching happens directly on the server.
   const allParsedData = parseAllGroupsData(rawBerlitzGroups);
   const currentGroupData = allParsedData.find(
     (group) => group.groupName === decodedGroupId
   );
 
-  // Error handling for missing group
   if (!currentGroupData) {
     return (
       <main className="container mx-auto py-8 px-4 text-center">
@@ -64,7 +65,6 @@ const StudentReportPage = async ({ params }: StudentReportPageProps) => {
     (rec) => rec.student === decodedStudentName
   );
 
-  // Error handling for missing student in the data
   if (studentRecords.length === 0) {
     return (
       <main className="container mx-auto py-8 px-4 text-center">
@@ -82,7 +82,6 @@ const StudentReportPage = async ({ params }: StudentReportPageProps) => {
     );
   }
 
-  // We pass the fetched data as props to the Client Component.
   return (
     <StudentReportClient
       studentName={decodedStudentName}

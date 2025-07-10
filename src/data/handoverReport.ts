@@ -5,6 +5,8 @@ export const handoverReport = `
 
 **Prepared by: Juan Francisco Marcenaro Arellano (Juanfra)**
 
+**Note: You may ask our AI about this report at the bottom of the main page if you don't want to read it in full.**
+
 > #### About My Teaching Philosophy
 > My approach in the classroom is centered on creating a dynamic, welcoming, and effective learning environment. I believe that confidence is the key to fluency, and I work to build strong rapport with students to help them develop an efficient and positive mindset for their studies.
 >

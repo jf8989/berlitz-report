@@ -6,6 +6,9 @@ import { parseAllGroupsData, ParsedBerlitzData } from "@/lib/dataParser";
 import { rawBerlitzGroups } from "@/data/berlitzData";
 import { handoverReport } from "@/data/handoverReport";
 
+import Image from "next/image";
+import { motion } from "framer-motion";
+
 // Import client components
 import OverviewDashboard from "@/components/OverviewDashboard";
 import StudentListAndReports from "@/components/StudentListAndReports";
@@ -13,6 +16,8 @@ import AIChatInterface from "@/components/AIChatInterface";
 import { ReportModal } from "@/components/ReportModal";
 import { Card } from "@/components/ui/Card";
 import { BookText } from "lucide-react";
+// --- NEW: Import the WelcomeMessage component ---
+import { WelcomeMessage } from "@/components/WelcomeMessage";
 
 export default function Home() {
   const allParsedData: ParsedBerlitzData[] = useMemo(() => {
@@ -46,11 +51,55 @@ export default function Home() {
         <h1 className="text-3xl md:text-4xl font-extrabold text-foreground">
           Berlitz Class Report Dashboard
         </h1>
-        {/* --- NEW: Add the subtitle right below the main title --- */}
         <p className="text-lg text-muted-foreground mt-2">
           by Juan Francisco Marcenaro Arellano
         </p>
       </div>
+
+      <div className="my-10">
+        <div className="relative mx-auto w-48 h-48">
+          <motion.div
+            className="absolute inset-0 rounded-full opacity-60"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            style={{
+              background:
+                "conic-gradient(from 0deg, #06b6d4, #3b82f6, #8b5cf6, #06b6d4)",
+            }}
+          />
+          <motion.div
+            className="absolute inset-2 rounded-full opacity-40"
+            style={{
+              background:
+                "conic-gradient(from 180deg, #14b8a6, #06b6d4, #3b82f6, #14b8a6)",
+              filter: "blur(12px)",
+            }}
+          />
+          <motion.div
+            className="relative w-full h-full p-2 rounded-full overflow-hidden"
+            style={{
+              background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Image
+              src="/images/jf-profile-picture3.jpg"
+              alt="Juan Francisco Marcenaro Arellano"
+              width={224}
+              height={224}
+              className="rounded-full object-cover w-full h-full shadow-2xl"
+              quality={95}
+              priority={true}
+            />
+          </motion.div>
+        </div>
+      </div>
+
+      {/* --- NEW: Add the WelcomeMessage component here --- */}
+      <div className="mb-10">
+        <WelcomeMessage />
+      </div>
+      {/* --- END of new section --- */}
 
       {/* Control Card */}
       <Card className="mb-8 p-4 flex flex-col sm:flex-row items-center justify-center gap-4">

@@ -4,8 +4,9 @@ import { Inter } from "next/font/google";
 import { GeistSans } from "geist/font";
 import "./globals.css";
 import { cn } from "../lib/utils";
-import { ThemeProvider } from "@/components/ThemeProvider"; // NEW: Import ThemeProvider
-import { SiteHeader } from "@/components/SiteHeader"; // NEW: Import SiteHeader
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -21,8 +22,8 @@ export const metadata: Metadata = {
   },
   description: "An interactive dashboard for reviewing Berlitz class data.",
   keywords: ["Next.js", "Berlitz", "Report", "Dashboard", "AI"],
-  authors: [{ name: "Your Name" }],
-  creator: "Your Name",
+  authors: [{ name: "Juan Francisco Marcenaro Arellano" }],
+  creator: "Juan Francisco Marcenaro Arellano",
 };
 
 export const viewport: Viewport = {
@@ -49,7 +50,6 @@ export default function RootLayout({
           GeistSans.variable
         )}
       >
-        {/* NEW: Wrap with ThemeProvider */}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -57,9 +57,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="relative flex min-h-screen flex-col bg-background">
-            {/* NEW: Add the SiteHeader */}
             <SiteHeader />
             <main className="flex-1">{children}</main>
+            <SiteFooter />
           </div>
         </ThemeProvider>
       </body>

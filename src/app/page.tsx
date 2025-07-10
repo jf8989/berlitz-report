@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 // src/app/page.tsx
 "use client";
 
@@ -13,13 +12,6 @@ import StudentListAndReports from "@/components/StudentListAndReports";
 import AIChatInterface from "@/components/AIChatInterface";
 import { ReportModal } from "@/components/ReportModal";
 import { Card } from "@/components/ui/Card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/Select";
 import { BookText } from "lucide-react";
 
 export default function Home() {
@@ -50,9 +42,15 @@ export default function Home() {
 
   return (
     <main className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl md:text-4xl font-extrabold mb-8 text-center text-foreground">
-        Berlitz Class Report Dashboard
-      </h1>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-foreground">
+          Berlitz Class Report Dashboard
+        </h1>
+        {/* --- NEW: Add the subtitle right below the main title --- */}
+        <p className="text-lg text-muted-foreground mt-2">
+          by Juan Francisco Marcenaro Arellano
+        </p>
+      </div>
 
       {/* Control Card */}
       <Card className="mb-8 p-4 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -63,8 +61,6 @@ export default function Home() {
           Select Group:
         </label>
 
-        {/* --- FINAL FIX: Reverted to the simple select pattern that your components expect --- */}
-        {/* This uses `value` and a standard `onChange` handler, and does not use SelectTrigger/SelectValue */}
         <select
           id="group-select"
           value={selectedGroup}

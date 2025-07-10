@@ -2,6 +2,8 @@
 
 An interactive, full-stack dashboard for analyzing student performance data, featuring a conversational AI assistant powered by Google Gemini. This project transforms static spreadsheet data into a dynamic, insightful, and user-friendly web application.
 
+I decided to create this project when I quit my English Teaching job at Berlitz and wanted them to get a special report about each one of my classes and students.
+
 ![Next.js](https://img.shields.io/badge/Next.js-15.3.5-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5.3-blue?style=for-the-badge&logo=typescript)
 

@@ -32,7 +32,7 @@ I decided to create this project when I quit my English Teaching job at Berlitz 
 | Category          | Technologies                                                                   |
 | ----------------- | ------------------------------------------------------------------------------ |
 | **Frontend**      | ⚛️ Next.js (App Router), ⚛️ React, 🔵 TypeScript, 💨 Tailwind CSS                  |
-| **AI & Backend**  | 🧠 Google Gemini 1.5 Flash, ⚡ Vercel Edge Functions                             |
+| **AI & Backend**  | 🧠 Google Gemini 2.5 Flash, ⚡ Vercel                           |
 | **Database**      | 🗂️ Dexie.js (for client-side IndexedDB chat persistence)                        |
 | **UI & Charting** | 📊 Recharts, ✨ Custom Components, 🎨 Tailwind Typography, 💡 Lucide React (Icons) |
 | **Deployment**    | ▲ Vercel                                                                       |
